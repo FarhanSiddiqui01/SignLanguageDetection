@@ -39,14 +39,14 @@ Future<void> getConversations(WidgetRef ref) async {
 
 Future<void> addConversation(
     WidgetRef ref, String videoPath, String answer) async {
-  String uploadVideoPath = await uploadVideoToFirebaseStorage(videoPath);
+  // String uploadVideoPath = await uploadVideoToFirebaseStorage(videoPath);
 
   DocumentReference userRef = FirebaseFirestore.instance
       .collection('users')
       .doc(ref.watch(credential)!.uid);
 
   Conversation newConversation = Conversation(
-    video: uploadVideoPath,
+    video: videoPath,
     answer:
         'go to downloads and in symbolRecog check the images for this video lorepsumsondoifnosinofinsoeinfunnueninfinsinfisnifnsnfsbdfhjsbdfhsbfhsbfhsbfhsbhfbshdfbhbsfb',
   );

@@ -239,7 +239,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoLink))
+    // _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoLink))
+    _controller = VideoPlayerController.file(File(widget.videoLink))
       ..initialize().then((_) {
         setState(() {});
         _controller!.addListener(completedListener);
@@ -286,6 +287,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               )
             ],
           )
-        : Container();
+        : const SizedBox(
+            child: Text("video is not playable maybe Deleted"),
+          );
   }
 }
