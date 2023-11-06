@@ -28,6 +28,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void login() async {
+    //login a user with his credentials
     String email = _email.text.trim();
     String pass = _password.text.trim();
 
@@ -54,11 +55,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void navigateToSignUp() {
+    //onclick navigate to signUp form
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => const SignUpPage()));
   }
 
   void navigateToConversation() {
+    //onclick navigate to model prompt form
     Navigator.pushReplacement(context,
         MaterialPageRoute(builder: (context) => const ConversationWithBot()));
   }

@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Widget title() {
     return const Text(
-      "HandSymbolize",
+      "Urdu Sign Language Detection",
       style: TextStyle(color: Colors.white, fontSize: 28),
     );
   }

@@ -146,7 +146,7 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Deaf converter AI"),
+        title: const Text("Urdu Sign Language Detection"),
         centerTitle: true,
       ),
       body: Stack(

@@ -29,6 +29,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   }
 
   void signup() async {
+    //registering a new user
     String email = _email.text.trim();
     String name = _name.text.trim();
     String phoneNo = _phoneNo.text.trim();
