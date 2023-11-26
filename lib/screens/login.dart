@@ -28,7 +28,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void login() async {
-    //login a user with his credentials
     String email = _email.text.trim();
     String pass = _password.text.trim();
 
@@ -49,19 +48,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  void loginWithGoogle() async {
+    var result = await signInWithGoogle(ref);
+    if (result != null) {
+      navigateToConversation();
+    } else {
+      showDialogBox(DialogState.failure,
+          "could not login with google due to error", null, null);
+    }
+  }
+
   void showDialogBox(DialogState dialogState, String text, Function? dothen,
       List<String>? missingElements) {
     showTheDialogBox(context, dialogState, text, dothen, missingElements);
   }
 
   void navigateToSignUp() {
-    //onclick navigate to signUp form
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => const SignUpPage()));
   }
 
   void navigateToConversation() {
-    //onclick navigate to model prompt form
     Navigator.pushReplacement(context,
         MaterialPageRoute(builder: (context) => const ConversationWithBot()));
   }
@@ -108,7 +115,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     height: 61.h,
                   ),
-                  signUpText()
+                  signUpText(),
+                  SizedBox(
+                    height: 61.h,
+                  ),
+                  googleSignInButton()
                 ],
               ),
             ),
@@ -183,4 +194,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
     );
   }
+
+//Google signIn
+
+  Widget googleSignInButton() => InkWell(
+        onTap: loginWithGoogle,
+        child: Container(
+          width: 220.w,
+          height: 51.h,
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: const BorderRadius.all(Radius.circular(10))),
+          child: const Center(
+            child: Text(
+              "SignIn with Google",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        ),
+      );
 }

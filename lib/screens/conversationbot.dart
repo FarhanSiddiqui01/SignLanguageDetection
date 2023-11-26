@@ -121,6 +121,38 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
         .showSnackBar(const SnackBar(content: Text('Nothing is selected')));
   }
 
+  Future<bool> showConfirmationDialog(BuildContext context) async {
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Exit Application'),
+          content: const Text('Do you want to exit application?'),
+          actions: [
+            GestureDetector(
+              child: const Text(
+                'No',
+                style: TextStyle(color: Colors.blue),
+              ),
+              onTap: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            GestureDetector(
+              child: const Text(
+                'Yes',
+                style: TextStyle(color: Colors.blue),
+              ),
+              onTap: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future getVideo(
     ImageSource img,
   ) async {
@@ -144,44 +176,53 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Urdu Sign Language Detection"),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            controller: _scrollController,
-            children: ref.watch(conversationData).isEmpty
-                ? [
-                    const Text(
-                        "Start by pressing the upload button at bottom right")
-                  ]
-                : ref
-                    .watch(conversationData)
-                    .map((data) => showConversation(data))
-                    .toList(),
-          ),
-          Visibility(
-              visible: ref.watch(conversationLoader),
-              child: const LoadingScreen()),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Theme.of(context).primaryColor,
-        onPressed: () async {
-          if (!ref.watch(conversationLoader)) {
-            if (await Permission.storage.request().isGranted) {
-              _showPicker();
-            } else {
-              await Permission.storage.request();
+    return WillPopScope(
+      onWillPop: () async {
+        bool allowBackNavigation = await showConfirmationDialog(context);
+        return allowBackNavigation;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Urdu Sign Language Detection"),
+          centerTitle: true,
+        ),
+        body: Stack(
+          children: [
+            ListView(
+              controller: _scrollController,
+              children: ref.watch(conversationData).isEmpty
+                  ? [
+                      const Text(
+                          "Start by pressing the upload button at bottom right")
+                    ]
+                  : ref
+                      .watch(conversationData)
+                      .map((data) => showConversation(data))
+                      .toList(),
+            ),
+            Visibility(
+                visible: ref.watch(conversationLoader),
+                child: const LoadingScreen()),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Theme.of(context).primaryColor,
+          onPressed: () async {
+            if (!ref.watch(conversationLoader)) {
+              if (await Permission.storage.request().isGranted) {
+                _showPicker();
+              } else {
+                await Permission.storage.request();
+              }
             }
-          }
-        },
-        child: const Icon(
-          Icons.upload,
-          color: Colors.white,
+            else{
+              print("this ran");
+            }
+          },
+          child: const Icon(
+            Icons.upload,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -235,6 +276,7 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   VideoPlayerController? _controller;
+  bool error = false;
 
   @override
   void initState() {
@@ -244,6 +286,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       ..initialize().then((_) {
         setState(() {});
         _controller!.addListener(completedListener);
+      }).onError((error, stackTrace) {
+        print("Video initialization error: $error");
+        setState(() {
+          error = true;
+        });
       });
   }
 
@@ -271,24 +318,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   Widget build(BuildContext context) {
     return _controller!.value.isInitialized
-        ? Stack(
-            children: [
-              VideoPlayer(_controller!),
-              Center(
-                child: IconButton(
-                    onPressed: stopAndPlayVideo,
-                    icon: Icon(
-                      _controller!.value.isPlaying
-                          ? Icons.pause
-                          : Icons.play_arrow,
-                      color: Colors.white,
-                      size: 32,
-                    )),
+        ? error
+            ? Stack(
+                children: [
+                  VideoPlayer(_controller!),
+                  Center(
+                    child: IconButton(
+                        onPressed: stopAndPlayVideo,
+                        icon: Icon(
+                          _controller!.value.isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 32,
+                        )),
+                  )
+                ],
               )
-            ],
-          )
-        : const SizedBox(
-            child: Text("video is not playable maybe Deleted"),
+            : const SizedBox(
+                child: Text("video is not playable maybe Deleted or removed"),
+              )
+        : const Center(
+            child: CircularProgressIndicator(),
           );
   }
 }

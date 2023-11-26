@@ -46,6 +46,7 @@ dependencies:
   flutter_riverpod: ^2.3.2
   firebase_storage: ^11.2.7
   video_player: ^2.7.2
+  google_sign_in: ^6.1.6
 
 dev_dependencies:
   flutter_test:
