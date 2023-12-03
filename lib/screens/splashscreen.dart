@@ -1,23 +1,58 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:imagetoframe/controller/authcontroller.dart';
+import 'package:imagetoframe/screens/conversationbot.dart';
 import 'package:imagetoframe/screens/login.dart';
+import 'package:imagetoframe/service/local_storage_service.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  final LocalStorageService _localStorageService = LocalStorageService();
+
   @override
   void initState() {
     super.initState();
+    Future.delayed(Duration.zero, () async {
+      Credentail? userCredentail = await _localStorageService.getCredentail();
+      if (userCredentail == null) {
+        navigateToLogin();
+      } else {
+        loginWithCredentails(userCredentail);
+      }
+    });
+  }
+
+  void loginWithCredentails(Credentail userCredentail) async {
+    var result = await loginWithEmailPassword(
+        userCredentail.email, userCredentail.password, ref);
+    if (result != null) {
+      navigateToConversation();
+    } else {
+      _localStorageService.removeCredentail();
+      navigateToLogin();
+    }
+  }
+
+  void navigateToLogin() {
     Timer(const Duration(milliseconds: 800), () {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => const LoginPage()));
+    });
+  }
+
+  void navigateToConversation() {
+    Timer(const Duration(milliseconds: 800), () {
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (context) => const ConversationWithBot()));
     });
   }
 

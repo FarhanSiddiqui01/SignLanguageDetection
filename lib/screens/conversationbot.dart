@@ -9,6 +9,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:imagetoframe/controller/conversationcontroller.dart';
 import 'package:imagetoframe/controller/loadingscreen.dart';
+import 'package:imagetoframe/screens/login.dart';
+import 'package:imagetoframe/service/local_storage_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
 
@@ -22,6 +24,7 @@ class ConversationWithBot extends ConsumerStatefulWidget {
 
 class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
   final ScrollController _scrollController = ScrollController();
+  final LocalStorageService _localStorageService = LocalStorageService();
   @override
   void initState() {
     super.initState();
@@ -121,6 +124,39 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
         .showSnackBar(const SnackBar(content: Text('Nothing is selected')));
   }
 
+  Future<bool> showConfirmationDialog(
+      BuildContext context, String title, String content) async {
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            GestureDetector(
+              child: const Text(
+                'No',
+                style: TextStyle(color: Colors.blue),
+              ),
+              onTap: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            GestureDetector(
+              child: const Text(
+                'Yes',
+                style: TextStyle(color: Colors.blue),
+              ),
+              onTap: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future getVideo(
     ImageSource img,
   ) async {
@@ -138,50 +174,83 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
     }
   }
 
+  void logout() async {
+    bool logout = await showConfirmationDialog(
+        context, "Logout", "Do you want to logout?");
+    if (logout) {
+      _localStorageService.removeCredentail();
+      navigateToLogin();
+    }
+  }
+
+  void navigateToLogin() {
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (context) => const LoginPage()));
+  }
+
   @override
   Widget build(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Deaf converter AI"),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            controller: _scrollController,
-            children: ref.watch(conversationData).isEmpty
-                ? [
-                    const Text(
-                        "Start by pressing the upload button at bottom right")
-                  ]
-                : ref
-                    .watch(conversationData)
-                    .map((data) => showConversation(data))
-                    .toList(),
-          ),
-          Visibility(
-              visible: ref.watch(conversationLoader),
-              child: const LoadingScreen()),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Theme.of(context).primaryColor,
-        onPressed: () async {
-          if (!ref.watch(conversationLoader)) {
-            if (await Permission.storage.request().isGranted) {
-              _showPicker();
-            } else {
-              await Permission.storage.request();
+    return WillPopScope(
+      onWillPop: () async {
+        bool allowBackNavigation = await showConfirmationDialog(
+            context, 'Exit Application', 'Do you want to exit application?');
+        return allowBackNavigation;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Deaf converter AI"),
+          centerTitle: true,
+          actions: [
+            IconButton(onPressed: logout, icon: const Icon(Icons.exit_to_app))
+          ],
+        ),
+        body: Stack(
+          children: [
+            ListView(
+              controller: _scrollController,
+              children: ref.watch(conversationData).isEmpty
+                  ? [
+                      const Text(
+                          "Start by pressing the upload button at bottom right")
+                    ]
+                  : ref
+                      .watch(conversationData)
+                      .map((data) => showConversation(data))
+                      .toList(),
+            ),
+            Visibility(
+                visible: ref.watch(conversationLoader),
+                child: const LoadingScreen()),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Theme.of(context).primaryColor,
+          // onPressed: () async {
+          //   if (!ref.watch(conversationLoader)) {
+          //     if (await Permission.storage.request().isGranted) {
+          //       _showPicker();
+          //     } else {
+          //       await Permission.storage.request();
+          //     }
+          //   }
+          // },
+          onPressed: () {
+            if (!ref.watch(conversationLoader)) {
+              Permission.storage.request().then((status) {
+                if (status.isGranted) {
+                  _showPicker();
+                }
+              });
             }
-          }
-        },
-        child: const Icon(
-          Icons.upload,
-          color: Colors.white,
+          },
+          child: const Icon(
+            Icons.upload,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -235,6 +304,7 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   VideoPlayerController? _controller;
+  bool error = false;
 
   @override
   void initState() {
@@ -244,6 +314,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       ..initialize().then((_) {
         setState(() {});
         _controller!.addListener(completedListener);
+      }).onError((error, stackTrace) {
+        print("Video initialization error: $error");
+        setState(() {
+          error = true;
+        });
       });
   }
 
@@ -271,24 +346,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   @override
   Widget build(BuildContext context) {
     return _controller!.value.isInitialized
-        ? Stack(
-            children: [
-              VideoPlayer(_controller!),
-              Center(
-                child: IconButton(
-                    onPressed: stopAndPlayVideo,
-                    icon: Icon(
-                      _controller!.value.isPlaying
-                          ? Icons.pause
-                          : Icons.play_arrow,
-                      color: Colors.white,
-                      size: 32,
-                    )),
+        ? !error
+            ? Stack(
+                children: [
+                  VideoPlayer(_controller!),
+                  Center(
+                    child: IconButton(
+                        onPressed: stopAndPlayVideo,
+                        icon: Icon(
+                          _controller!.value.isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 32,
+                        )),
+                  )
+                ],
               )
-            ],
-          )
-        : const SizedBox(
-            child: Text("video is not playable maybe Deleted"),
+            : const SizedBox(
+                child: Text("video is not playable maybe Deleted or removed"),
+              )
+        : const Center(
+            child: CircularProgressIndicator(),
           );
   }
 }

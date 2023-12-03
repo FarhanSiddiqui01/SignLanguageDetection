@@ -1,8 +1,91 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
+
+Future<UserCredential?> signInWithGoogle(WidgetRef ref) async {
+  ref.read(authLoader.notifier).state = true;
+
+  try {
+    // Trigger Google Sign In
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+    if (googleUser == null) {
+      // User canceled Google sign-in
+      changeAuthLoaderState(ref, false);
+      return null;
+    }
+
+    // Obtain GoogleSignInAuthentication and sign in with Firebase
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+    final AuthCredential googleCredential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    UserCredential userCredential =
+        await _auth.signInWithCredential(googleCredential);
+
+    if (userCredential.user != null) {
+      DocumentReference userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid);
+
+      // Check if the user has signed up with Google before
+      DocumentSnapshot userSnapshot = await userRef.get();
+      if (userSnapshot.exists) {
+        // User has signed up with Google before, retrieve additional data
+        Map<String, dynamic> userData =
+            userSnapshot.data() as Map<String, dynamic>;
+
+        String name = userData['name'];
+        String phoneNo = userData['phoneNo'];
+
+        String uid = userCredential.user!.uid;
+        String email = userCredential.user!.email!;
+
+        ref.read(credential.notifier).state = AppUser(
+          name: name,
+          uid: uid,
+          phoneNo: phoneNo,
+          email: email,
+        );
+      } else {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({'name': "", "phoneNo": "", "conversation": []});
+        DocumentSnapshot userSnapshot = await userRef.get();
+        Map<String, dynamic> userData =
+            userSnapshot.data() as Map<String, dynamic>;
+
+        String name = userData['name'];
+        String phoneNo = userData['phoneNo'];
+
+        String uid = userCredential.user!.uid;
+        String email = userCredential.user!.email!;
+
+        ref.read(credential.notifier).state = AppUser(
+          name: name,
+          uid: uid,
+          phoneNo: phoneNo,
+          email: email,
+        );
+      }
+    }
+
+    changeAuthLoaderState(ref, false);
+    return userCredential;
+  } catch (e) {
+    // Handle errors here
+    print('Error during Google sign-in: $e');
+    changeAuthLoaderState(ref, false);
+    return null;
+  }
+}
 
 Future<UserCredential?> registerWithEmailPassword(String email, String password,
     String name, String phoneNo, WidgetRef ref) async {

@@ -6,6 +6,7 @@ import 'package:imagetoframe/controller/loadingscreen.dart';
 import 'package:imagetoframe/customWidgets/customtextfield.dart';
 import 'package:imagetoframe/screens/conversationbot.dart';
 import 'package:imagetoframe/screens/signup.dart';
+import 'package:imagetoframe/service/local_storage_service.dart';
 
 import '../customWidgets/customshowdialogbox.dart';
 
@@ -19,6 +20,8 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
+
+  LocalStorageService _localStorageService = LocalStorageService();
 
   @override
   void dispose() {
@@ -38,6 +41,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (missingElements.isEmpty) {
       var result = await loginWithEmailPassword(email, pass, ref);
       if (result != null) {
+        _localStorageService
+            .saveCredentail(Credentail(email: email, password: pass));
         navigateToConversation();
       } else {
         showDialogBox(DialogState.failure, "Invalid Credentails", null, null);
@@ -45,6 +50,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     } else {
       showDialogBox(DialogState.warning, "Credentails not filled correctly",
           null, missingElements);
+    }
+  }
+
+  void loginWithGoogle() async {
+    var result = await signInWithGoogle(ref);
+    if (result != null) {
+      navigateToConversation();
+    } else {
+      showDialogBox(DialogState.failure,
+          "could not login with google due to error", null, null);
     }
   }
 
@@ -105,7 +120,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     height: 61.h,
                   ),
-                  signUpText()
+                  signUpText(),
+                  SizedBox(
+                    height: 61.h,
+                  ),
+                  googleSignInButton()
                 ],
               ),
             ),
@@ -180,4 +199,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
     );
   }
+
+//Google signIn
+
+  Widget googleSignInButton() => InkWell(
+        onTap: loginWithGoogle,
+        child: Container(
+          width: 220.w,
+          height: 51.h,
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: const BorderRadius.all(Radius.circular(10))),
+          child: const Center(
+            child: Text(
+              "SignIn with Google",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        ),
+      );
 }
