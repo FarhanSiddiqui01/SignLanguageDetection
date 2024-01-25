@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +11,7 @@ import 'package:imagetoframe/screens/login.dart';
 import 'package:imagetoframe/service/local_storage_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
+import 'package:http/http.dart' as http;
 
 class ConversationWithBot extends ConsumerStatefulWidget {
   const ConversationWithBot({super.key});
@@ -37,56 +36,29 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
   final picker = ImagePicker();
   File? galleryFile;
 
-  Future<void> getImages(String outputPath) async {
-    List<File> frameFiles = [];
-    Directory dir = Directory(outputPath);
+  Future<http.StreamedResponse> getDataFromAPi(String videoPath) async {
+    var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(
+            'https://huggingface.co/spaces/Zaid786khan/Urdu-Sign-Language-Detector'));
+    request.files.add(await http.MultipartFile.fromPath('video', videoPath));
 
-    await for (var entity in dir.list()) {
-      if (entity is File && entity.path.endsWith('.png')) {
-        frameFiles.add(entity);
-      }
-    }
+    http.StreamedResponse response = await request.send();
+    return response;
   }
 
-  Future<void> createDirectory(String outputPath) async {
-    Directory dir = Directory(outputPath);
-    if (!await dir.exists()) {
-      dir.create();
-    }
-  }
-
-  Future clearDirectory(String path) async {
-    Directory dir = Directory(path);
-    int lenght = await dir.list().length;
-    if (lenght > 5) {
-      await for (var entity in dir.list()) {
-        if (entity is File && entity.path.endsWith('.png')) {
-          await entity.delete();
-        }
-      }
-    }
-  }
-
-  Future<void> extractImages(String videoPath) async {
+  Future<void> uploadingConversation(String videoPath) async {
     changeLoaderState(ref, true);
-    const String basePath = "/storage/emulated/0/Download/";
-    const String outputPath = "${basePath}symbolRecog/";
-    await createDirectory(outputPath);
-    String commandExecute = "-i $videoPath -vf fps=1 $outputPath%4d.png";
-    await clearDirectory(outputPath);
-
-    FFmpegKit.execute(commandExecute).then((session) async {
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        await getImages(outputPath);
-        await addConversation(ref, videoPath, "comming soon");
-      } else if (ReturnCode.isCancel(returnCode)) {
-        // CANCEL
-      } else {
-        // ERROR
-      }
-    });
+    var response = await getDataFromAPi(videoPath);
+    if (response.statusCode == 200) {
+      String data = await response.stream.bytesToString();
+      //pass the string from data in place of "comming soon"
+      await addConversation(ref, videoPath, "comming soon");
+    } else {
+      changeLoaderState(ref, false);
+      showSnackBar(
+          "error backend is giving status code of ${response.statusCode}");
+    }
   }
 
   void _showPicker() {
@@ -122,6 +94,10 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
   void showNothingSnackBar() {
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Nothing is selected')));
+  }
+
+  void showSnackBar(String issue) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(issue)));
   }
 
   Future<bool> showConfirmationDialog(
@@ -168,7 +144,7 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
 
     if (xfilePick != null) {
       galleryFile = File(pickedFile!.path);
-      extractImages(pickedFile.path);
+      uploadingConversation(pickedFile.path);
     } else {
       showNothingSnackBar();
     }
@@ -229,15 +205,6 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: Theme.of(context).primaryColor,
-          // onPressed: () async {
-          //   if (!ref.watch(conversationLoader)) {
-          //     if (await Permission.storage.request().isGranted) {
-          //       _showPicker();
-          //     } else {
-          //       await Permission.storage.request();
-          //     }
-          //   }
-          // },
           onPressed: () {
             if (!ref.watch(conversationLoader)) {
               Permission.storage.request().then((status) {
