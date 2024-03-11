@@ -47,9 +47,7 @@ Future<void> addConversation(
 
   Conversation newConversation = Conversation(
     video: videoPath,
-    answer:
-        'go to downloads and in symbolRecog check the images for this video lorepsumsondoifnosinofinsoeinfunnueninfinsinfisnifnsnfsbdfhjsbdfhsbfhsbfhsbfhsbhfbshdfbhbsfb',
-  );
+    answer: answer);
 
   await userRef.update({
     'conversation': FieldValue.arrayUnion([newConversation.toJson()]),

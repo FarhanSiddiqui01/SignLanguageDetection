@@ -40,7 +40,7 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
     var request = http.MultipartRequest(
         'POST',
         Uri.parse(
-            'https://huggingface.co/spaces/Zaid786khan/Urdu-Sign-Language-Detector'));
+            'http://192.168.1.102:8081/api/video'));
     request.files.add(await http.MultipartFile.fromPath('video', videoPath));
 
     http.StreamedResponse response = await request.send();
@@ -53,7 +53,7 @@ class _ConversationWithBotState extends ConsumerState<ConversationWithBot> {
     if (response.statusCode == 200) {
       String data = await response.stream.bytesToString();
       //pass the string from data in place of "comming soon"
-      await addConversation(ref, videoPath, "comming soon");
+      await addConversation(ref, videoPath, data ?? 'unable to translate');
     } else {
       changeLoaderState(ref, false);
       showSnackBar(
